@@ -1,0 +1,159 @@
+import React, { useEffect, useRef, useState } from "react";
+
+// EnvelopeApology.jsx
+// Self-contained React component (no Tailwind required).
+// Usage: <EnvelopeApology recipient="Prachi" message="Don't be gussa please? ❤️" />
+
+export default function EnvelopeApology({
+  recipient = "Prachi",
+  message = "Don't be gussa please? ❤️",
+}) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const idxRef = useRef(0);
+  const confettiRef = useRef(null);
+
+  // Typewriter when opened
+  useEffect(() => {
+    if (!open) {
+      setTyped("");
+      idxRef.current = 0;
+      return;
+    }
+    const full = message;
+    idxRef.current = 0;
+    const t = setInterval(() => {
+      idxRef.current += 1;
+      setTyped(full.slice(0, idxRef.current));
+      if (idxRef.current >= full.length) clearInterval(t);
+    }, 45);
+    return () => clearInterval(t);
+  }, [open, message]);
+
+  // Confetti canvas (runs only when opened)
+  useEffect(() => {
+    const canvas = confettiRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let animId;
+    let pieces = [];
+
+    function resize() {
+      canvas.width = canvas.clientWidth * devicePixelRatio;
+      canvas.height = canvas.clientHeight * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
+
+    function makePiece() {
+      return {
+        x: Math.random() * canvas.clientWidth,
+        y: -10,
+        r: 6 + Math.random() * 8,
+        color: ["#FF6B6B", "#FFD166", "#6BCB77", "#4D96FF", "#C390FF"][Math.floor(Math.random() * 5)],
+        vx: -1 + Math.random() * 2,
+        vy: 1 + Math.random() * 3,
+        rot: Math.random() * Math.PI * 2,
+        vrota: -0.1 + Math.random() * 0.2,
+      };
+    }
+
+    function step() {
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      pieces.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrota;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 0.6);
+        ctx.restore();
+      });
+      pieces = pieces.filter((p) => p.y < canvas.clientHeight + 20);
+      if (Math.random() < 0.35) pieces.push(makePiece());
+      animId = requestAnimationFrame(step);
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    if (open) {
+      pieces = new Array(20).fill(0).map(makePiece);
+      animId = requestAnimationFrame(step);
+    }
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, [open]);
+
+  return (
+    <div className="envelope-root" style={{ fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial' }}>
+      <div className={`envelope ${open ? "open" : ""}`} onClick={() => setOpen((s) => !s)} role="button" aria-pressed={open} title={open ? "Click to close" : "Click to open"}>
+        <canvas ref={confettiRef} className="confetti" />
+
+        <div className="box">
+          <div className="flap" />
+
+          <div className="body">
+            <div className="paper" aria-hidden={!open}>
+              <div className="paper-inner">
+                <div className="to">To: <strong>{recipient}</strong></div>
+                <div className="msg">{typed}<span className="caret">{open && typed.length < message.length ? "|" : ""}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="sealed" aria-hidden={open}>
+            <div className="stamp">💌</div>
+          </div>
+        </div>
+
+        <div className="hint">{open ? "Tap the envelope to close" : "Tap the envelope to open"}</div>
+
+      <style>{`
+        .envelope-root { min-height: 100vh; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg,#ffe7f0 0%, #fff1e6 100%); padding: 32px; box-sizing: border-box; }
+        .envelope { width: 360px; max-width: 92vw; height: 220px; position: relative; perspective: 1200px; cursor: pointer; user-select: none; }
+
+        .confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+        .box { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+
+        /* top flap */
+        .flap { position: absolute; top: 0; left: 0; width: 100%; height: 58%; background: linear-gradient(180deg,#f96da7 0%, #d6336c 100%); clip-path: polygon(50% 0, 100% 62%, 0 62%); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); transform-origin: top center; transition: transform 700ms cubic-bezier(.2,.9,.2,1), box-shadow 300ms; z-index: 6; }
+        .envelope:hover .flap { transform: translateY(-4px); }
+
+        /* sealed look */
+        .sealed { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); z-index: 5; pointer-events: none; }
+        .stamp { background: white; padding: 8px 12px; border-radius: 999px; box-shadow: 0 6px 14px rgba(0,0,0,0.12); font-size: 18px; }
+
+        /* body / pocket */
+        .body { position: absolute; inset: 38% 6% 6% 6%; background: #fff; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); z-index: 2; display:flex; align-items:center; justify-content:center; overflow: visible; }
+
+        /* paper */
+        .paper { position: absolute; left: 50%; top: 14%; transform: translate(-50%, 110%); width: 86%; height: 64%; background: #fffdf8; border-radius: 8px; box-shadow: 0 14px 28px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06); transition: transform 700ms cubic-bezier(.2,.9,.2,1), opacity 350ms; z-index: 4; padding: 14px; box-sizing: border-box; }
+        .paper-inner { display:flex; flex-direction: column; gap: 10px; align-items: flex-start; justify-content: center; height: 100%; }
+        .paper .to { color: #b02e53; font-weight: 600; font-size: 14px; }
+        .paper .msg { color: #3b1b2b; font-size: 18px; line-height: 1.25; min-height: 48px; word-wrap: break-word; white-space: pre-wrap; }
+        .caret { margin-left: 4px; opacity: 0.9; }
+
+        /* hint */
+        .hint { margin-top: 12px; text-align: center; color: #8b5d6f; font-size: 13px; }
+
+        /* OPEN state */
+        .envelope.open .flap { transform: translateY(-140%); box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        .envelope.open .paper { transform: translate(-50%, 0%); }
+        .envelope.open .sealed { opacity: 0; transform: translateY(-6px); }
+
+        /* small responsive tweaks */
+        @media (max-width: 420px) {
+          .envelope { height: 200px; }
+          .paper .msg { font-size: 16px; }
+        }
+
+      `}</style>
+      </div>
+    </div>
+  );
+}
